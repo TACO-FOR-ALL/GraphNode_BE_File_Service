@@ -1,0 +1,14 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-import-staging-zip",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "import-staging/"
+      },
+      "Expiration": {
+        "Days": 7
+      }
+    }
+  ]
+}

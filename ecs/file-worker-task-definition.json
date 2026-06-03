@@ -1,0 +1,47 @@
+{
+  "family": "graphnode-file-service-worker-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::571721033550:role/graphnode-ecs-task-role",
+  "taskRoleArn": "arn:aws:iam::571721033550:role/graphnode-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "graphnode_file_service_worker",
+      "image": "571721033550.dkr.ecr.ap-northeast-2.amazonaws.com/taco5/graphnode-file-service:latest",
+      "essential": true,
+      "command": ["node", "dist/index-worker.js"],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "AWS_REGION", "value": "ap-northeast-2" },
+        { "name": "S3_FILE_BUCKET", "value": "taco5-graphnode-filedata-chat-and-note-s3" },
+        { "name": "IMPORT_WORKER_ENABLED", "value": "true" },
+        { "name": "IMPORT_WORKER_CONCURRENCY", "value": "2" }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:571721033550:secret:taco5/graphnode/file-service-REPLACE:DATABASE_URL::"
+        },
+        {
+          "name": "INTERNAL_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:571721033550:secret:taco5/graphnode/file-service-REPLACE:INTERNAL_API_KEY::"
+        },
+        {
+          "name": "SQS_IMPORT_QUEUE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:571721033550:secret:taco5/graphnode/file-service-REPLACE:SQS_IMPORT_QUEUE_URL::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/graphnode-file-service-worker",
+          "awslogs-create-group": "true",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "worker"
+        }
+      }
+    }
+  ]
+}

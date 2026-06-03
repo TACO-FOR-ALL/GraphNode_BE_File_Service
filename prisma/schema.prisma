@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ImportJob {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  providerSlug  String    @map("provider_slug")
+  status        String
+  stagingS3Key  String    @map("staging_s3_key")
+  originalName  String?   @map("original_name")
+  zipSha256     String?   @map("zip_sha256")
+  workerId      String?   @map("worker_id")
+  attempt       Int       @default(0)
+  errorCode     String?   @map("error_code")
+  errorDetail   String?   @map("error_detail")
+  statsJson     Json?     @map("stats_json")
+  resultS3Key   String?   @map("result_s3_key")
+  progress      Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  startedAt     DateTime? @map("started_at")
+  completedAt             DateTime? @map("completed_at")
+  finalizeStatus          String    @default("none") @map("finalize_status")
+  finalizeStartedAt       DateTime? @map("finalize_started_at")
+  finalizedAt             DateTime? @map("finalized_at")
+  finalizeError           String?   @map("finalize_error")
+  finalizeConversationIds Json?     @map("finalize_conversation_ids")
+
+  files ImportedFile[]
+  links MessageFileLink[]
+
+  @@index([userId, status])
+  @@map("import_jobs")
+}
+
+model ImportedFile {
+  id             String   @id @default(uuid())
+  jobId          String   @map("job_id")
+  userId         String   @map("user_id")
+  providerSlug   String   @map("provider_slug")
+  providerFileId String?  @map("provider_file_id")
+  relativePath   String   @map("relative_path")
+  originalName   String   @map("original_name")
+  mimeType       String   @map("mime_type")
+  sizeBytes      BigInt   @map("size_bytes")
+  sha256         String
+  s3Key          String?  @map("s3_key")
+  status         String
+
+  job   ImportJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  links MessageFileLink[]
+
+  @@index([jobId])
+  @@index([userId])
+  @@map("imported_files")
+}
+
+model MessageFileLink {
+  id                      String @id @default(uuid())
+  jobId                   String @map("job_id")
+  providerConversationKey String? @map("provider_conversation_key")
+  providerMessageKey      String  @map("provider_message_key")
+  graphMessageId          String? @map("graph_message_id")
+  importedFileId          String @map("imported_file_id")
+  confidence              String
+
+  job  ImportJob    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  file ImportedFile @relation(fields: [importedFileId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@map("message_file_links")
+}
