@@ -25,15 +25,15 @@
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:571721033550:secret:taco5/graphnode/file-service-REPLACE:DATABASE_URL::"
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:571721033550:secret:taco5/graphnode/file-service-vnN9VL:DATABASE_URL::"
         },
         {
           "name": "INTERNAL_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:571721033550:secret:taco5/graphnode/file-service-REPLACE:INTERNAL_API_KEY::"
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:571721033550:secret:taco5/graphnode/file-service-vnN9VL:INTERNAL_API_KEY::"
         },
         {
           "name": "SQS_IMPORT_QUEUE_URL",
-          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:571721033550:secret:taco5/graphnode/file-service-REPLACE:SQS_IMPORT_QUEUE_URL::"
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:571721033550:secret:taco5/graphnode/file-service-vnN9VL:SQS_IMPORT_QUEUE_URL::"
         }
       ],
       "logConfiguration": {

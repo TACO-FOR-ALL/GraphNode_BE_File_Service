@@ -36,21 +36,6 @@ AI export ZIP import MSA. GraphNode BFF만 `/internal/*` 로 호출합니다.
 
 Headers: `X-Internal-Api-Key`, `X-User-Id`
 
-## Local dev
-
-```bash
-cp .env.example .env
-# DATABASE_URL, INTERNAL_API_KEY, (선택) AWS/SQS 값 수정
-
-npm ci
-npm run db:generate
-npm run db:push          # Postgres 스키마 적용
-npm run dev              # API :3001
-npm run dev:worker       # SQS worker (별 터미널)
-```
-
-BFF 연동 테스트 시 GraphNode BE `.env` 의 `FILE_SERVICE_BASE_URL=http://localhost:3001`, `FILE_SERVICE_INTERNAL_API_KEY` 를 File Service `INTERNAL_API_KEY` 와 맞춥니다.
-
 ## Build
 
 ```bash
