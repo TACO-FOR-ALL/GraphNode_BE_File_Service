@@ -10,6 +10,7 @@ import type { ImportJobRepository } from '../ports/ImportJobRepository';
 import type { StoragePort } from '../ports/StoragePort';
 import type { PresignedAccessResponse } from '../../shared/dtos/import';
 import { NotFoundError } from '../../shared/errors/domain';
+import { buildContentDisposition } from '../../shared/utils/contentDisposition';
 
 export class PresignService {
   constructor(
@@ -32,12 +33,11 @@ export class PresignService {
 
     const env = loadEnv();
     const expiresSec = env.PRESIGN_TTL_SEC;
+    // RFC 5987 — 다운로드/인라인 시 원본 파일명(한글 등) 유지
     const disposition =
-      opts?.disposition === 'attachment'
-        ? `attachment; filename="${encodeURIComponent(file.originalName)}"`
-        : opts?.disposition === 'inline'
-          ? `inline; filename="${encodeURIComponent(file.originalName)}"`
-          : undefined;
+      opts?.disposition === 'attachment' || opts?.disposition === 'inline'
+        ? buildContentDisposition(file.originalName, opts.disposition)
+        : undefined;
 
     const url = await this.storage.getPresignedGetUrl(file.s3Key, expiresSec, { disposition });
     const expiresAt = new Date(Date.now() + expiresSec * 1000).toISOString();

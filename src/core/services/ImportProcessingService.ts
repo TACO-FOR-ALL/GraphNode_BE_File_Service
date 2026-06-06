@@ -191,21 +191,25 @@ export class ImportProcessingService {
       const fileId = ulid();
       const buf = fs.readFileSync(abs);
       const mime = ref.mimeType ?? guessMimeType(abs);
-      const safeName = sanitizeFilename(path.basename(abs));
-      const s3Key = buildImportFileKey(message.userId, fileId, safeName);
-
-      await this.storage.upload(s3Key, buf, mime);
       const fromIndex = fileIndex.get(ref.providerFileId);
       const manifestEntry =
         fromIndex ?? manifest.files.find((f) => f.absolutePath === abs);
+      // DB/첨부 메타에는 ZIP에서 복원한 원본명, S3 key에만 sanitize 적용
+      const displayName =
+        manifestEntry?.originalName?.trim() ||
+        path.basename(manifestEntry?.relativePath ?? abs);
+      const safeName = sanitizeFilename(displayName);
+      const s3Key = buildImportFileKey(message.userId, fileId, safeName);
+
+      await this.storage.upload(s3Key, buf, mime);
       await this.repo.createImportedFile({
         id: fileId,
         jobId: message.jobId,
         userId: message.userId,
         providerSlug: message.provider,
         providerFileId: ref.providerFileId,
-        relativePath: manifestEntry?.relativePath ?? safeName,
-        originalName: safeName,
+        relativePath: manifestEntry?.relativePath ?? displayName,
+        originalName: displayName,
         mimeType: mime,
         sizeBytes: BigInt(buf.length),
         sha256: manifestEntry?.sha256 ?? '',

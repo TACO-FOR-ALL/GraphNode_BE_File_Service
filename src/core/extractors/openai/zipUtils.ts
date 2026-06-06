@@ -7,6 +7,7 @@ import * as crypto from 'crypto';
 import AdmZip from 'adm-zip';
 
 import { InvalidArchiveError } from '../../../shared/errors/domain';
+import { decodeZipEntryName } from '../../../shared/utils/zipEntryName';
 import type { ExtractedFileEntry, ZipExtractLimits } from '../types';
 
 const DEFAULT_LIMITS: ZipExtractLimits = {
@@ -41,7 +42,8 @@ export function unzipFlat(zipPath: string, destDir: string, limits: ZipExtractLi
 
   for (const entry of entries) {
     if (entry.isDirectory) continue;
-    const entryName = entry.entryName.replace(/\\/g, '/');
+    // CP437 / UTF-8 ZIP 파일명을 올바르게 복원 (adm-zip 기본 decoder 보정)
+    const entryName = decodeZipEntryName(entry);
     if (entryName.includes('..') || path.isAbsolute(entryName)) {
       throw new InvalidArchiveError('ZIP path traversal detected');
     }
