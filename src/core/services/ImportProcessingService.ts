@@ -26,6 +26,10 @@ import type { ChatThread } from '../../shared/import-parser/types';
 import { attachmentTypeFromMime, guessMimeType } from '../../shared/utils/mime';
 import { logger } from '../../shared/utils/logger';
 import { InvalidArchiveError } from '../../shared/errors/domain';
+import {
+  classifyImportProcessingError,
+  type ImportProcessingStage,
+} from '../../shared/utils/importProcessingError';
 
 export class ImportProcessingService {
   constructor(
@@ -42,12 +46,15 @@ export class ImportProcessingService {
 
     const workDir = path.join(os.tmpdir(), 'graphnode-import', message.jobId);
     const zipLocal = path.join(workDir, 'source.zip');
+    let stage: ImportProcessingStage = 'acquire_job';
 
     try {
       fs.mkdirSync(workDir, { recursive: true });
+      stage = 'download_zip';
       await this.storage.downloadToFile(message.stagingS3Key, zipLocal);
       await this.repo.updateProgress(message.jobId, 10);
 
+      stage = 'extract_archive';
       const extractor = extractorRegistry.get(message.provider);
       const manifest = await extractor.extract(zipLocal, workDir);
       const fileIndex = buildFileIndex(manifest.files);
@@ -69,6 +76,7 @@ export class ImportProcessingService {
 
       await this.repo.updateProgress(message.jobId, 25);
 
+      stage = 'parse_shards';
       const allThreads: ChatThread[] = [];
       const allRefs: FileReference[] = [];
       const refKeys = new Set<string>();
@@ -95,6 +103,7 @@ export class ImportProcessingService {
 
       await this.repo.updateProgress(message.jobId, 45);
 
+      stage = 'persist_files';
       const resolvePath = (ref: FileReference, m: ExtractManifest) =>
         extractor.resolveFilePath(ref, m, fileIndex);
 
@@ -133,9 +142,11 @@ export class ImportProcessingService {
         uploadedFiles,
         unresolved
       );
+      stage = 'upload_result';
       const resultKey = buildImportResultKey(message.jobId);
       await this.storage.uploadJson(resultKey, payload);
 
+      stage = 'complete_job';
       await this.repo.completeJob(
         message.jobId,
         {
@@ -158,8 +169,11 @@ export class ImportProcessingService {
         'Import job completed'
       );
     } catch (err) {
-      const code = (err as { code?: string })?.code ?? 'IMPORT_FAILED';
-      const detail = err instanceof Error ? err.message : String(err);
+      const { code, detail } = classifyImportProcessingError(err, stage);
+      logger.error(
+        { err, jobId: message.jobId, stage, code, provider: message.provider },
+        'Import processing failed'
+      );
       await this.repo.failJob(message.jobId, code, detail);
       throw err;
     } finally {
