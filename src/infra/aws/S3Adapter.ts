@@ -31,6 +31,9 @@ export class S3Adapter implements StoragePort {
     this.bucket = env.S3_FILE_BUCKET;
     this.client = new S3Client({
       region: env.AWS_REGION,
+      // presigned PUT + LocalStack: SDK 기본 CRC32 체크섬이 서명 URL 업로드를 깨뜨림
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
       ...(env.AWS_ENDPOINT_URL
         ? { endpoint: env.AWS_ENDPOINT_URL, forcePathStyle: true }
         : {}),
