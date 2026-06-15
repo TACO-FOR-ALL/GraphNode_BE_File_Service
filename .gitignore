@@ -3,6 +3,7 @@ dist/
 coverage/
 .env
 .env.local
+.env.*backup
 *.log
 .DS_Store
 /tmp/
