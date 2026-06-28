@@ -10,6 +10,7 @@ import { loadEnv } from '../../config/env';
 import { QueuePort } from '../../core/ports/QueuePort';
 import type { ImportJobMessage } from '../../shared/dtos/import';
 import { UpstreamError, ValidationError } from '../../shared/errors/domain';
+import { awsErrorCode, sqsQueueName } from '../../shared/utils/logMeta';
 import { logger } from '../../shared/utils/logger';
 
 export class SqsPublisher implements QueuePort {
@@ -31,7 +32,14 @@ export class SqsPublisher implements QueuePort {
 
   async publishImportJob(message: ImportJobMessage): Promise<void> {
     if (!this.queueUrl) {
-      logger.warn({ jobId: message.jobId }, 'SQS_IMPORT_QUEUE_URL not set — skipping enqueue (dev mode)');
+      logger.warn(
+        {
+          event: 'fs.sqs.publish.skipped_dev',
+          jobId: message.jobId,
+          queueName: sqsQueueName(this.queueUrl),
+        },
+        'SQS_IMPORT_QUEUE_URL not set — skipping enqueue (dev mode)'
+      );
       return;
     }
     try {
@@ -41,7 +49,25 @@ export class SqsPublisher implements QueuePort {
           MessageBody: JSON.stringify(message),
         })
       );
+      logger.info(
+        {
+          event: 'fs.sqs.publish.success',
+          jobId: message.jobId,
+          userId: message.userId,
+          queueName: sqsQueueName(this.queueUrl),
+        },
+        'Import job enqueued'
+      );
     } catch (error) {
+      logger.error(
+        {
+          event: 'fs.sqs.publish.failed',
+          jobId: message.jobId,
+          awsErrorCode: awsErrorCode(error),
+          errMessage: String(error),
+        },
+        'SQS enqueue failed'
+      );
       throw new UpstreamError('Failed to enqueue import job', { originalError: String(error) });
     }
   }

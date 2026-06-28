@@ -41,10 +41,21 @@ export function startImportQueueConsumer(): Consumer | null {
     },
   });
 
-  app.on('error', (err) => logger.error({ err }, 'Import SQS consumer error'));
-  app.on('processing_error', (err) => logger.error({ err }, 'Import message processing error'));
+  app.on('error', (err) =>
+    logger.error({ event: 'fs.worker.sqs.consumer_error', err }, 'Import SQS consumer error')
+  );
+  app.on('processing_error', (err) =>
+    logger.error({ event: 'fs.worker.sqs.processing_error', err }, 'Import SQS processing error')
+  );
 
   app.start();
-  logger.info({ queueUrl: env.SQS_IMPORT_QUEUE_URL, workerId }, 'Import queue consumer started');
+  logger.info(
+    {
+      event: 'fs.worker.sqs.consumer_started',
+      queueName: env.SQS_IMPORT_QUEUE_URL?.split('/').pop(),
+      workerId,
+    },
+    'Import queue consumer started'
+  );
   return app;
 }

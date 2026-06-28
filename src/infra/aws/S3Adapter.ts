@@ -52,7 +52,10 @@ export class S3Adapter implements StoragePort {
       });
       await upload.done();
     } catch (error) {
-      logger.error({ err: error, key }, 'S3 upload failed');
+      logger.error(
+        { event: 'fs.s3.upload.failed', err: error, keyPrefix: key.split('/')[0] + '/' },
+        'S3 upload failed'
+      );
       throw new UpstreamError('Failed to upload to S3', { originalError: String(error) });
     }
   }
@@ -73,7 +76,10 @@ export class S3Adapter implements StoragePort {
         stream.on('error', reject);
       });
     } catch (error) {
-      logger.error({ err: error, key }, 'S3 download failed');
+      logger.error(
+        { event: 'fs.s3.download.failed', err: error, keyPrefix: key.split('/')[0] + '/' },
+        'S3 download failed'
+      );
       throw new UpstreamError('Failed to download from S3', { originalError: String(error) });
     }
   }
@@ -97,7 +103,10 @@ export class S3Adapter implements StoragePort {
       if (error instanceof NotFound || (error as { name?: string }).name === 'NotFound') {
         return null;
       }
-      logger.error({ err: error, key }, 'S3 headObject failed');
+      logger.error(
+        { event: 'fs.s3.head.failed', err: error, keyPrefix: key.split('/')[0] + '/' },
+        'S3 headObject failed'
+      );
       throw new UpstreamError('Failed to head S3 object', { originalError: String(error) });
     }
   }

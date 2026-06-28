@@ -1,24 +1,41 @@
 /**
  * 진입점: Import SQS Worker
- *
- * - HTTP 포트 없음 (GraphNode BE graph worker와 동일 패턴)
- * - ZIP 해제·파싱·S3 업로드·결과 JSON 저장은 여기서 처리
  */
 import { loadEnv } from './config/env';
 import { requireQueueInProduction } from './infra/aws/SqsPublisher';
 import { startImportQueueConsumer } from './workers/ImportQueueConsumer';
+import { probeDatabaseConnection } from './shared/utils/dbProbe';
+import { sqsQueueName } from './shared/utils/logMeta';
 import { logger } from './shared/utils/logger';
 
-loadEnv();
-requireQueueInProduction();
+async function main(): Promise<void> {
+  const env = loadEnv();
+  requireQueueInProduction();
+  await probeDatabaseConnection('worker');
 
-const consumer = startImportQueueConsumer();
-if (!consumer) {
-  logger.error('SQS_IMPORT_QUEUE_URL not set — worker cannot start');
-  process.exit(1);
+  const consumer = startImportQueueConsumer();
+  if (!consumer) {
+    logger.error({ event: 'fs.worker.startup.failed' }, 'SQS_IMPORT_QUEUE_URL not set — worker cannot start');
+    process.exit(1);
+  }
+
+  logger.info(
+    {
+      event: 'fs.worker.startup.ready',
+      service: 'file-service-worker',
+      nodeEnv: env.NODE_ENV,
+      sqsQueue: sqsQueueName(env.SQS_IMPORT_QUEUE_URL),
+    },
+    'File Service worker ready'
+  );
+
+  process.on('SIGTERM', () => {
+    consumer.stop();
+    process.exit(0);
+  });
 }
 
-process.on('SIGTERM', () => {
-  consumer?.stop();
-  process.exit(0);
+main().catch((err) => {
+  logger.error({ event: 'fs.worker.startup.failed', err }, 'File Service worker startup failed');
+  process.exit(1);
 });

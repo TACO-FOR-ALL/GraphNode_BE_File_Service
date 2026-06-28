@@ -13,6 +13,8 @@ import { createInternalRouter } from '../app/routes/InternalRouter';
 import { requestContext } from '../app/middlewares/request-context';
 import { errorHandler } from '../app/middlewares/error';
 import { NotFoundError } from '../shared/errors/domain';
+import { probeDatabaseConnection } from '../shared/utils/dbProbe';
+import { sqsQueueName } from '../shared/utils/logMeta';
 import { logger } from '../shared/utils/logger';
 
 export function createApp() {
@@ -36,8 +38,22 @@ export function createApp() {
 
 export async function startApiServer(): Promise<void> {
   const env = loadEnv();
+  await probeDatabaseConnection('api');
+
   const app = createApp();
   app.listen(env.PORT, env.HOST, () => {
-    logger.info({ host: env.HOST, port: env.PORT }, 'File Service API listening');
+    logger.info(
+      {
+        event: 'fs.startup.ready',
+        service: 'file-service-api',
+        host: env.HOST,
+        port: env.PORT,
+        nodeEnv: env.NODE_ENV,
+        s3Bucket: env.S3_FILE_BUCKET,
+        sqsConfigured: Boolean(env.SQS_IMPORT_QUEUE_URL),
+        sqsQueue: sqsQueueName(env.SQS_IMPORT_QUEUE_URL),
+      },
+      'File Service API listening'
+    );
   });
 }

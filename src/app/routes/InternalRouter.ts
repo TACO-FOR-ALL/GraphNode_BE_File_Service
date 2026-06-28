@@ -7,6 +7,7 @@ import { Router } from 'express';
 
 import { getContainer } from '../../bootstrap/container';
 import { ImportController } from '../controllers/ImportController';
+import { httpLog } from '../middlewares/http-log';
 import { internalAuth } from '../middlewares/internal-auth';
 import { asyncHandler } from '../utils/asyncHandler';
 
@@ -16,6 +17,7 @@ export function createInternalRouter(): Router {
   const router = Router();
 
   router.use(internalAuth);
+  router.use(httpLog);
 
   router.get('/import-providers', asyncHandler(controller.listProviders));
   router.post('/imports/init', asyncHandler(controller.initUpload));

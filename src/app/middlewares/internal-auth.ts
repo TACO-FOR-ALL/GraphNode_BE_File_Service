@@ -8,16 +8,37 @@
 import type { Request, Response, NextFunction } from 'express';
 
 import { loadEnv } from '../../config/env';
+import { getCorrelationId } from '../../shared/context/requestStore';
 import { AuthError, ValidationError } from '../../shared/errors/domain';
+import { logger } from '../../shared/utils/logger';
 
 export function internalAuth(req: Request, _res: Response, next: NextFunction): void {
   const env = loadEnv();
+  const correlationId = getCorrelationId();
+  const path = req.originalUrl;
   const key = req.headers['x-internal-api-key'];
-  if (!key || key !== env.INTERNAL_API_KEY) {
+
+  if (!key) {
+    logger.warn(
+      { event: 'fs.auth.missing_api_key', correlationId, path },
+      'Internal auth failed: missing API key'
+    );
     return next(new AuthError('Invalid internal API key'));
   }
+  if (key !== env.INTERNAL_API_KEY) {
+    logger.warn(
+      { event: 'fs.auth.invalid_api_key', correlationId, path },
+      'Internal auth failed: invalid API key'
+    );
+    return next(new AuthError('Invalid internal API key'));
+  }
+
   const userId = req.headers['x-user-id'];
   if (!userId || typeof userId !== 'string' || !userId.trim()) {
+    logger.warn(
+      { event: 'fs.auth.missing_user_id', correlationId, path },
+      'Internal auth failed: missing X-User-Id'
+    );
     return next(new ValidationError('X-User-Id header is required'));
   }
   (req as Request & { internalUserId: string }).internalUserId = userId.trim();

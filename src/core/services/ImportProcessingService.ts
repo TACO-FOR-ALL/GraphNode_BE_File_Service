@@ -40,9 +40,24 @@ export class ImportProcessingService {
   async processMessage(message: ImportJobMessage, workerId: string): Promise<void> {
     const acquired = await this.repo.tryMarkProcessing(message.jobId, workerId);
     if (!acquired) {
-      logger.info({ jobId: message.jobId }, 'Job already processing or not queued — skip');
+      logger.info(
+        { event: 'fs.worker.message.duplicate_skip', jobId: message.jobId, workerId },
+        'Job already processing or not queued — skip'
+      );
       return;
     }
+
+    const workStarted = Date.now();
+    logger.info(
+      {
+        event: 'fs.worker.message.received',
+        jobId: message.jobId,
+        userId: message.userId,
+        provider: message.provider,
+        workerId,
+      },
+      'Import SQS message received'
+    );
 
     const workDir = path.join(os.tmpdir(), 'graphnode-import', message.jobId);
     const zipLocal = path.join(workDir, 'source.zip');
@@ -66,6 +81,7 @@ export class ImportProcessingService {
 
       logger.info(
         {
+          event: 'fs.extractor.archive.extracted',
           jobId: message.jobId,
           shards: shards.length,
           files: manifest.files.length,
@@ -161,18 +177,32 @@ export class ImportProcessingService {
 
       logger.info(
         {
+          event: 'fs.worker.job.completed',
           jobId: message.jobId,
+          userId: message.userId,
+          provider: message.provider,
           conversations: payload.conversations.length,
           shards: shards.length,
           unresolved: unresolved.length,
+          durationMs: Date.now() - workStarted,
         },
-        'Import job completed'
+        'Import worker job completed'
       );
     } catch (err) {
       const { code, detail } = classifyImportProcessingError(err, stage);
       logger.error(
-        { err, jobId: message.jobId, stage, code, provider: message.provider },
-        'Import processing failed'
+        {
+          event: 'fs.worker.message.failed',
+          err,
+          jobId: message.jobId,
+          userId: message.userId,
+          stage,
+          errorCode: code,
+          errorDetail: detail,
+          provider: message.provider,
+          durationMs: Date.now() - workStarted,
+        },
+        'Import worker job failed'
       );
       await this.repo.failJob(message.jobId, code, detail);
       throw err;
